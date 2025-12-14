@@ -270,7 +270,7 @@ export default function DiaryScreen() {
             <View style={styles.savedSummaryStats}>
               <View style={styles.savedStatItem}>
                 <Text style={styles.savedStatEmoji}>{MOODS.find(m => m.value === mood)?.emoji || '😐'}</Text>
-                <Text style={styles.savedStatLabel}>Настроение</Text>
+                <Text style={styles.savedStatLabel}>Самочувствие</Text>
               </View>
               <View style={styles.savedStatItem}>
                 <Text style={styles.savedStatEmoji}>💧</Text>

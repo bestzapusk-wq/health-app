@@ -10,6 +10,8 @@ import {
   Animated,
   Dimensions,
   Switch,
+  Text as RNText,
+  View as RNView,
 } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -284,14 +286,14 @@ export default function ProfileScreen() {
               end={{ x: 1, y: 0 }}
               style={styles.profileBannerGradient}
             >
-              <Text style={styles.profileBannerEmoji}>👋</Text>
-              <View style={styles.profileBannerContent}>
-                <Text style={styles.profileBannerTitle}>Заполните профиль</Text>
-                <Text style={styles.profileBannerText}>Для персональных рекомендаций</Text>
-              </View>
-              <View style={styles.profileBannerButton}>
-                <Text style={styles.profileBannerButtonText}>Заполнить</Text>
-              </View>
+              <RNText style={styles.profileBannerEmoji}>👋</RNText>
+              <RNView style={styles.profileBannerContent}>
+                <RNText style={styles.profileBannerTitle}>Заполните профиль</RNText>
+                <RNText style={styles.profileBannerText}>Для персональных рекомендаций</RNText>
+              </RNView>
+              <RNView style={styles.profileBannerButton}>
+                <RNText style={styles.profileBannerButtonText}>Заполнить</RNText>
+              </RNView>
             </LinearGradient>
           </TouchableOpacity>
         )}
@@ -1042,14 +1044,16 @@ const styles = StyleSheet.create({
   profileBannerGradient: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 16,
+    gap: 12,
   },
   profileBannerEmoji: {
     fontSize: 28,
-    marginRight: 12,
   },
   profileBannerContent: {
     flex: 1,
+    backgroundColor: 'transparent',
   },
   profileBannerTitle: {
     fontSize: 16,
@@ -1059,15 +1063,16 @@ const styles = StyleSheet.create({
   profileBannerText: {
     fontSize: 13,
     color: 'rgba(255,255,255,0.85)',
+    marginTop: 2,
   },
   profileBannerButton: {
     backgroundColor: 'white',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 12,
   },
   profileBannerButtonText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: '#f59e0b',
   },

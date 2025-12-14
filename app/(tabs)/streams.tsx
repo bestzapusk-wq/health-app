@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ProfileAvatar from '@/components/ProfileAvatar';
-import { sendStreamQuestion } from '@/lib/streams';
+import { sendStreamQuestion, getUpcomingStreams, getRecordedStreams, Stream } from '@/lib/streams';
 
 const { width } = Dimensions.get('window');
 
@@ -24,32 +24,65 @@ const BROADCAST_DAYS = [1, 3, 5]; // 1 = ПН, 3 = СР, 5 = ПТ
 const BROADCAST_HOUR = 19;
 const BROADCAST_MINUTE = 30;
 
-const UPCOMING_BROADCASTS = [
+// Демо-данные (используются если таблица streams пустая)
+const DEMO_BROADCASTS = [
   {
-    id: 1,
+    id: 'demo-1',
     title: 'Эндокринолог: Щитовидная железа',
-    doctor: 'Др. Алия Касымова',
-    doctorPhoto: '👩‍⚕️',
-    description: 'Разберём симптомы гипо- и гипертиреоза, какие анализы сдавать, как читать результаты и когда нужно лечение. Ответы на ваши вопросы в конце эфира.',
+    doctor_name: 'Др. Алия Касымова',
+    doctor_specialty: 'Эндокринолог',
+    description: 'Разберём симптомы гипо- и гипертиреоза, какие анализы сдавать, как читать результаты и когда нужно лечение.',
+    scheduled_date: '',
+    scheduled_time: '19:30',
+    is_live: false,
+    is_completed: false,
+    recording_url: null,
+    duration_minutes: null,
+    views_count: 0,
+    thumbnail_url: null,
+    created_at: new Date().toISOString(),
     dayOfWeek: 1, // ПН
+    doctorPhoto: '👩‍⚕️',
   },
   {
-    id: 2,
+    id: 'demo-2',
     title: 'Гастроэнтеролог: Здоровье ЖКТ',
-    doctor: 'Др. Марат Ибрагимов',
-    doctorPhoto: '👨‍⚕️',
-    description: 'Поговорим о проблемах с пищеварением: вздутие, изжога, запоры. Когда идти к врачу и какие анализы сдать. Разбор СИБР и СРК.',
+    doctor_name: 'Др. Марат Ибрагимов',
+    doctor_specialty: 'Гастроэнтеролог',
+    description: 'Поговорим о проблемах с пищеварением: вздутие, изжога, запоры. Когда идти к врачу и какие анализы сдать.',
+    scheduled_date: '',
+    scheduled_time: '19:30',
+    is_live: false,
+    is_completed: false,
+    recording_url: null,
+    duration_minutes: null,
+    views_count: 0,
+    thumbnail_url: null,
+    created_at: new Date().toISOString(),
     dayOfWeek: 3, // СР
+    doctorPhoto: '👨‍⚕️',
   },
   {
-    id: 3,
+    id: 'demo-3',
     title: 'Нутрициолог: Разбор тарелок',
-    doctor: 'Анна Петрова',
-    doctorPhoto: '👩‍🍳',
+    doctor_name: 'Анна Петрова',
+    doctor_specialty: 'Нутрициолог',
     description: 'Разбор ваших тарелок из чата. Учимся составлять сбалансированный рацион, считать БЖУ и выбирать продукты.',
+    scheduled_date: '',
+    scheduled_time: '19:30',
+    is_live: false,
+    is_completed: false,
+    recording_url: null,
+    duration_minutes: null,
+    views_count: 0,
+    thumbnail_url: null,
+    created_at: new Date().toISOString(),
     dayOfWeek: 5, // ПТ
+    doctorPhoto: '👩‍🍳',
   },
 ];
+
+type BroadcastItem = typeof DEMO_BROADCASTS[0];
 
 const RECORDINGS = [
   {
@@ -120,7 +153,7 @@ function generateCalendar() {
 }
 
 // Получить ближайший эфир
-function getNextBroadcast(): { broadcast: typeof UPCOMING_BROADCASTS[0]; date: Date } {
+function getNextBroadcast(broadcasts: BroadcastItem[] = DEMO_BROADCASTS): { broadcast: BroadcastItem; date: Date } {
   const now = new Date();
   
   for (let daysAhead = 0; daysAhead < 7; daysAhead++) {
@@ -134,7 +167,7 @@ function getNextBroadcast(): { broadcast: typeof UPCOMING_BROADCASTS[0]; date: D
       broadcastTime.setHours(BROADCAST_HOUR, BROADCAST_MINUTE, 0, 0);
       
       if (broadcastTime > now) {
-        const broadcast = UPCOMING_BROADCASTS.find(b => b.dayOfWeek === mondayBased) || UPCOMING_BROADCASTS[0];
+        const broadcast = broadcasts.find(b => b.dayOfWeek === mondayBased) || broadcasts[0];
         return { broadcast, date: broadcastTime };
       }
     }
@@ -144,7 +177,7 @@ function getNextBroadcast(): { broadcast: typeof UPCOMING_BROADCASTS[0]; date: D
   const nextMonday = new Date(now);
   nextMonday.setDate(now.getDate() + ((8 - now.getDay()) % 7 || 7));
   nextMonday.setHours(BROADCAST_HOUR, BROADCAST_MINUTE, 0, 0);
-  return { broadcast: UPCOMING_BROADCASTS[0], date: nextMonday };
+  return { broadcast: broadcasts[0], date: nextMonday };
 }
 
 // Форматирование даты для эфира
@@ -161,22 +194,69 @@ export default function StreamsScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date().getDate());
   const [calendar, setCalendar] = useState(generateCalendar());
   
+  // Эфиры из БД
+  const [broadcasts, setBroadcasts] = useState<BroadcastItem[]>(DEMO_BROADCASTS);
+  const [loadingStreams, setLoadingStreams] = useState(true);
+  
   // Ближайший эфир и таймер
-  const [nextBroadcast, setNextBroadcast] = useState(getNextBroadcast());
+  const [nextBroadcast, setNextBroadcast] = useState(getNextBroadcast(DEMO_BROADCASTS));
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, mins: 0, secs: 0 });
   
   // Напоминания
-  const [reminders, setReminders] = useState<number[]>([]);
+  const [reminders, setReminders] = useState<string[]>([]);
   
   // Модалки
   const [showQuestionModal, setShowQuestionModal] = useState(false);
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   const [showRecordingModal, setShowRecordingModal] = useState(false);
-  const [selectedBroadcast, setSelectedBroadcast] = useState<typeof UPCOMING_BROADCASTS[0] | null>(null);
+  const [selectedBroadcast, setSelectedBroadcast] = useState<BroadcastItem | null>(null);
   const [selectedRecording, setSelectedRecording] = useState<typeof RECORDINGS[0] | null>(null);
   
   const [question, setQuestion] = useState('');
   const [questionSent, setQuestionSent] = useState(false);
+  
+  // Загрузка эфиров из БД
+  useEffect(() => {
+    loadStreams();
+  }, []);
+  
+  const loadStreams = async () => {
+    setLoadingStreams(true);
+    try {
+      const [upcoming, recorded] = await Promise.all([
+        getUpcomingStreams(),
+        getRecordedStreams(),
+      ]);
+      
+      if (upcoming.length > 0) {
+        // Преобразуем в формат BroadcastItem
+        const converted: BroadcastItem[] = upcoming.map((s, i) => ({
+          id: s.id,
+          title: s.title,
+          doctor_name: s.doctor_name || 'Врач',
+          doctor_specialty: s.doctor_specialty || '',
+          description: s.description || '',
+          scheduled_date: s.scheduled_date,
+          scheduled_time: s.scheduled_time,
+          is_live: s.is_live,
+          is_completed: s.is_completed,
+          recording_url: s.recording_url,
+          duration_minutes: s.duration_minutes,
+          views_count: s.views_count,
+          thumbnail_url: s.thumbnail_url,
+          created_at: s.created_at,
+          dayOfWeek: new Date(s.scheduled_date).getDay() || 1,
+          doctorPhoto: '👨‍⚕️',
+        }));
+        setBroadcasts(converted);
+        setNextBroadcast(getNextBroadcast(converted));
+      }
+    } catch (error) {
+      console.error('Error loading streams:', error);
+    } finally {
+      setLoadingStreams(false);
+    }
+  };
 
   // Загружаем напоминания из AsyncStorage
   useEffect(() => {
@@ -220,9 +300,9 @@ export default function StreamsScreen() {
     }
   };
 
-  const toggleReminder = async (broadcastId: number) => {
+  const toggleReminder = async (broadcastId: string) => {
     try {
-      let newReminders: number[];
+      let newReminders: string[];
       if (reminders.includes(broadcastId)) {
         newReminders = reminders.filter(id => id !== broadcastId);
       } else {
@@ -237,9 +317,14 @@ export default function StreamsScreen() {
 
   const handleSendQuestion = async () => {
     if (question.trim()) {
-      // Сохраняем вопрос в Supabase
-      const streamId = nextBroadcast?.broadcast?.id?.toString() || 'general';
-      const result = await sendStreamQuestion(streamId, question.trim());
+      // Передаём ID эфира (если это реальный UUID, иначе null)
+      const streamId = nextBroadcast?.broadcast?.id;
+      const isRealUuid = streamId && !streamId.startsWith('demo-');
+      
+      const result = await sendStreamQuestion(
+        isRealUuid ? streamId : null, 
+        question.trim()
+      );
       
       if (!result.success) {
         console.error('Failed to send question:', result.error);
@@ -256,7 +341,7 @@ export default function StreamsScreen() {
     }
   };
 
-  const openBroadcastModal = (broadcast: typeof UPCOMING_BROADCASTS[0]) => {
+  const openBroadcastModal = (broadcast: BroadcastItem) => {
     setSelectedBroadcast(broadcast);
     setShowBroadcastModal(true);
   };
@@ -361,7 +446,7 @@ export default function StreamsScreen() {
               <Text style={styles.nextBadgeText}>БЛИЖАЙШИЙ</Text>
             </View>
             <Text style={styles.nextTitle}>{nextBroadcast.broadcast.title}</Text>
-            <Text style={styles.nextDoctor}>{nextBroadcast.broadcast.doctor}</Text>
+            <Text style={styles.nextDoctor}>{nextBroadcast.broadcast.doctor_name}</Text>
             <Text style={styles.nextDescription}>
               {nextBroadcast.broadcast.description}
             </Text>
@@ -463,7 +548,7 @@ export default function StreamsScreen() {
         {/* Список */}
         {activeTab === 'upcoming' ? (
           <View style={styles.list}>
-            {UPCOMING_BROADCASTS.map((broadcast) => (
+            {broadcasts.map((broadcast) => (
               <TouchableOpacity
                 key={broadcast.id}
                 style={[styles.listItem, broadcast.id === nextBroadcast.broadcast.id && styles.listItemHighlight]}
@@ -474,7 +559,7 @@ export default function StreamsScreen() {
                 </View>
                 <View style={styles.listItemContent}>
                   <Text style={styles.listItemTitle}>{broadcast.title}</Text>
-                  <Text style={styles.listItemDoctor}>{broadcast.doctor}</Text>
+                  <Text style={styles.listItemDoctor}>{broadcast.doctor_name}</Text>
                   <View style={styles.listItemMeta}>
                     <Text style={styles.listItemMetaText}>📅 {getBroadcastDate(broadcast.dayOfWeek)}</Text>
                   </View>
@@ -539,13 +624,13 @@ export default function StreamsScreen() {
                 </View>
 
                 <View style={styles.modalInfo}>
-                  <Text style={styles.modalInfoTitle}>
-                    <Text style={styles.modalInfoLabel}>К эфиру: </Text>
-                    {nextBroadcast.broadcast.title}
-                  </Text>
-                  <Text style={styles.modalInfoSub}>
-                    {nextBroadcast.broadcast.doctor} · {formatBroadcastDate(nextBroadcast.date)}
-                  </Text>
+                <Text style={styles.modalInfoTitle}>
+                  <Text style={styles.modalInfoLabel}>К эфиру: </Text>
+                  {nextBroadcast.broadcast.title}
+                </Text>
+                <Text style={styles.modalInfoSub}>
+                  {nextBroadcast.broadcast.doctor_name} · {formatBroadcastDate(nextBroadcast.date)}
+                </Text>
                 </View>
 
                 <TextInput
@@ -613,7 +698,7 @@ export default function StreamsScreen() {
                     <Text style={styles.doctorPhotoEmoji}>{selectedBroadcast.doctorPhoto}</Text>
                   </View>
                   <View style={styles.doctorInfo}>
-                    <Text style={styles.doctorName}>{selectedBroadcast.doctor}</Text>
+                    <Text style={styles.doctorName}>{selectedBroadcast.doctor_name}</Text>
                     <Text style={styles.broadcastTitle}>{selectedBroadcast.title}</Text>
                   </View>
                 </View>

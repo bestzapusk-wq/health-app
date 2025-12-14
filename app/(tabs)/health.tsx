@@ -31,6 +31,9 @@ import {
   saveHealthIndicators,
   INDICATORS_CONFIG,
   HealthIndicators,
+  getFilledPercentage,
+  shouldShowIndicatorsButton,
+  getKeyIndicatorsFromData,
 } from '@/lib/healthIndicators';
 import { getWeekDynamics, getZozhScore } from '@/lib/diary';
 import { getHealthFiles, uploadHealthFile, pickDocument, HealthFile } from '@/lib/healthFiles';
@@ -108,7 +111,10 @@ export default function HealthScreen() {
   // Модалка ввода анализов
   const [showIndicatorsModal, setShowIndicatorsModal] = useState(false);
   const [indicators, setIndicators] = useState<Partial<HealthIndicators>>({});
+  const [fullIndicators, setFullIndicators] = useState<HealthIndicators | null>(null);
   const [savingIndicators, setSavingIndicators] = useState(false);
+  const [indicatorsPercentage, setIndicatorsPercentage] = useState(0);
+  const [showIndicatorsButton, setShowIndicatorsButton] = useState(true);
   
   // Динамика за неделю
   const [weekDynamics, setWeekDynamics] = useState<{ date: string; score: number; dayName: string }[]>([]);
@@ -164,6 +170,13 @@ export default function HealthScreen() {
       // Загружаем сохранённые показатели в форму
       if (healthInd) {
         setIndicators(healthInd);
+        setFullIndicators(healthInd);
+        setIndicatorsPercentage(getFilledPercentage(healthInd));
+        setShowIndicatorsButton(shouldShowIndicatorsButton(healthInd));
+      } else {
+        setFullIndicators(null);
+        setIndicatorsPercentage(0);
+        setShowIndicatorsButton(true);
       }
       
       // Health score берём из результата опросника
@@ -529,23 +542,63 @@ export default function HealthScreen() {
 
   const renderAnalysesTab = () => (
     <>
-      {/* Внести свои анализы */}
-      <TouchableOpacity 
-        style={styles.uploadButton}
-        onPress={() => setShowIndicatorsModal(true)}
-      >
-        <View style={styles.uploadIcon}>
-          <Text style={styles.uploadEmoji}>🔬</Text>
+      {/* Внести свои анализы - показываем с процентом или скрываем если заполнено */}
+      {showIndicatorsButton && (
+        <TouchableOpacity 
+          style={styles.uploadButton}
+          onPress={() => setShowIndicatorsModal(true)}
+        >
+          <View style={styles.uploadIcon}>
+            <Text style={styles.uploadEmoji}>🔬</Text>
+          </View>
+          <View style={styles.uploadContent}>
+            <Text style={styles.uploadTitle}>
+              Внести анализы {indicatorsPercentage > 0 ? `— ${indicatorsPercentage}%` : ''}
+            </Text>
+            <Text style={styles.uploadSubtitle}>
+              {indicatorsPercentage === 100 
+                ? 'Обновить показатели' 
+                : `${10 - Math.round(indicatorsPercentage / 10)} из 10 осталось`}
+            </Text>
+          </View>
+          <View style={styles.uploadPlus}>
+            <Text style={styles.uploadPlusText}>{indicatorsPercentage === 100 ? '↻' : '+'}</Text>
+          </View>
+        </TouchableOpacity>
+      )}
+
+      {/* Если все анализы заполнены - показываем сводку */}
+      {!showIndicatorsButton && indicatorsPercentage === 100 && (
+        <View style={styles.analysesFilledCard}>
+          <Text style={styles.analysesFilledIcon}>✅</Text>
+          <View style={styles.analysesFilledContent}>
+            <Text style={styles.analysesFilledTitle}>Анализы заполнены</Text>
+            <Text style={styles.analysesFilledSubtitle}>Следующее обновление через 2 недели</Text>
+          </View>
         </View>
-        <View style={styles.uploadContent}>
-          <Text style={styles.uploadTitle}>Внести свои анализы</Text>
-          <Text style={styles.uploadSubtitle}>10 ключевых показателей</Text>
-        </View>
-        <View style={styles.uploadPlus}>
-          <Text style={styles.uploadPlusText}>+</Text>
-        </View>
-      </TouchableOpacity>
+      )}
       
+      {/* Записаться через WhatsApp - перенесено выше */}
+      <TouchableOpacity style={styles.bookButton} onPress={handleBookAnalyses}>
+        <LinearGradient
+          colors={['#25D366', '#128C7E']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.bookGradient}
+        >
+          <View style={styles.bookIcon}>
+            <Text style={styles.bookEmoji}>💬</Text>
+          </View>
+          <View style={styles.bookContent}>
+            <Text style={styles.bookTitle}>Записаться на анализы</Text>
+            <Text style={styles.bookSubtitle}>Напишите нам в WhatsApp</Text>
+          </View>
+          <View style={styles.bookArrow}>
+            <Text style={styles.bookArrowText}>→</Text>
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+
       {/* Загрузить анализ */}
       <TouchableOpacity style={styles.uploadButtonSecondary}>
         <View style={styles.uploadIcon}>
@@ -557,20 +610,6 @@ export default function HealthScreen() {
         </View>
         <View style={styles.uploadPlus}>
           <Text style={styles.uploadPlusText}>+</Text>
-        </View>
-      </TouchableOpacity>
-
-      {/* Пройти опросник */}
-      <TouchableOpacity style={styles.questionnaireButton}>
-        <View style={styles.questionnaireButtonIcon}>
-          <Text style={styles.uploadEmoji}>📋</Text>
-        </View>
-        <View style={styles.uploadContent}>
-          <Text style={styles.uploadTitle}>Пройти интегральный опросник</Text>
-          <Text style={styles.uploadSubtitle}>Оценка состояния здоровья</Text>
-        </View>
-        <View style={styles.questionnaireArrow}>
-          <Text style={styles.questionnaireArrowText}>→</Text>
         </View>
       </TouchableOpacity>
 
@@ -643,26 +682,6 @@ export default function HealthScreen() {
         </View>
       </TouchableOpacity>
 
-      {/* Записаться через WhatsApp */}
-      <TouchableOpacity style={styles.bookButton} onPress={handleBookAnalyses}>
-        <LinearGradient
-          colors={['#25D366', '#128C7E']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.bookGradient}
-        >
-          <View style={styles.bookIcon}>
-            <Text style={styles.bookEmoji}>💬</Text>
-          </View>
-          <View style={styles.bookContent}>
-            <Text style={styles.bookTitle}>Записаться на анализы</Text>
-            <Text style={styles.bookSubtitle}>Напишите нам в WhatsApp</Text>
-          </View>
-          <View style={styles.bookArrow}>
-            <Text style={styles.bookArrowText}>→</Text>
-          </View>
-        </LinearGradient>
-      </TouchableOpacity>
     </>
   );
 
@@ -1740,6 +1759,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: 'white',
+  },
+  // Анализы заполнены
+  analysesFilledCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: '#dcfce7',
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#86efac',
+  },
+  analysesFilledIcon: {
+    fontSize: 32,
+  },
+  analysesFilledContent: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  analysesFilledTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#166534',
+  },
+  analysesFilledSubtitle: {
+    fontSize: 13,
+    color: '#15803d',
   },
   // Кнопка опросника
   questionnaireButton: {

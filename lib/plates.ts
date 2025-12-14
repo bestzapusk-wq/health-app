@@ -232,6 +232,37 @@ export async function getPlatesStats(): Promise<{
   };
 }
 
+// Демо-данные для лучших тарелок (показываются если таблица пустая)
+const DEMO_BEST_PLATES: BestPlate[] = [
+  {
+    id: 'demo-1',
+    image_url: 'https://nuhdurfhzesserazozaw.supabase.co/storage/v1/object/public/best-plates/obed.jpg',
+    meal_type: 'lunch',
+    author_name: 'Марина Т.',
+    review: 'Отличный сбалансированный обед! Много белка и овощей.',
+    is_active: true,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'demo-2',
+    image_url: 'https://nuhdurfhzesserazozaw.supabase.co/storage/v1/object/public/best-plates/ugin.jpg',
+    meal_type: 'dinner',
+    author_name: 'Алия К.',
+    review: 'Лёгкий ужин с правильным соотношением БЖУ.',
+    is_active: true,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'demo-3',
+    image_url: 'https://nuhdurfhzesserazozaw.supabase.co/storage/v1/object/public/best-plates/zavtrak.jpg',
+    meal_type: 'breakfast',
+    author_name: 'Сауле А.',
+    review: 'Идеальный завтрак для энергии на весь день!',
+    is_active: true,
+    created_at: new Date().toISOString(),
+  },
+];
+
 // Получить лучшие тарелки недели
 export async function getBestPlates(): Promise<BestPlate[]> {
   const { data, error } = await supabase
@@ -242,10 +273,16 @@ export async function getBestPlates(): Promise<BestPlate[]> {
 
   if (error) {
     console.error('Error fetching best plates:', error);
-    return [];
+    // Возвращаем демо-данные при ошибке
+    return DEMO_BEST_PLATES;
   }
 
-  return data || [];
+  // Если таблица пустая — показываем демо-данные
+  if (!data || data.length === 0) {
+    return DEMO_BEST_PLATES;
+  }
+
+  return data;
 }
 
 // Вспомогательные функции для бейджей приёмов пищи

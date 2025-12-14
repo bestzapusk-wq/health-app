@@ -192,46 +192,54 @@ export async function getMonthlyStats(): Promise<{
   };
 }
 
-// Получить прогресс за последние 7 дней (для плашки с подарком)
+// Получить streak (дни подряд) для плашки с подарком
 export async function getWeekProgress(): Promise<boolean[]> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [false, false, false, false, false, false, false];
 
-  // Получаем даты последних 7 дней
-  const today = new Date();
-  const dates: string[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    dates.push(d.toISOString().split('T')[0]);
-  }
-
-  console.log('Week progress dates:', dates);
+  // Получаем записи за последние 14 дней для подсчёта streak
+  const twoWeeksAgo = new Date();
+  twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
 
   const { data, error } = await supabase
     .from('diary_entries')
     .select('date')
     .eq('user_id', user.id)
-    .in('date', dates);
+    .gte('date', twoWeeksAgo.toISOString().split('T')[0])
+    .order('date', { ascending: false });
 
   if (error) {
     console.error('Error fetching week progress:', error);
     return [false, false, false, false, false, false, false];
   }
 
-  console.log('Found diary entries:', data);
-
-  // Нормализуем даты из базы (могут приходить в разных форматах)
+  // Собираем все заполненные даты
   const filledDates = new Set((data || []).map(e => {
-    // Преобразуем дату в формат YYYY-MM-DD
     const dateStr = typeof e.date === 'string' ? e.date.split('T')[0] : e.date;
     return dateStr;
   }));
+
+  // Считаем streak - сколько дней подряд заполнено начиная с сегодня
+  let streak = 0;
+  const today = new Date();
   
-  console.log('Filled dates set:', Array.from(filledDates));
-  
-  const result = dates.map(d => filledDates.has(d));
-  console.log('Week progress result:', result);
+  for (let i = 0; i < 7; i++) {
+    const checkDate = new Date(today);
+    checkDate.setDate(today.getDate() - i);
+    const dateStr = checkDate.toISOString().split('T')[0];
+    
+    if (filledDates.has(dateStr)) {
+      streak++;
+    } else {
+      // Прерываем streak если день пропущен
+      break;
+    }
+  }
+
+  console.log('Current streak:', streak);
+
+  // Возвращаем массив где первые N элементов = true (streak)
+  const result = Array(7).fill(false).map((_, i) => i < streak);
   
   return result;
 }

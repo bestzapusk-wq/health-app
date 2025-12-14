@@ -147,3 +147,78 @@ export function formatIndicatorValue(value: number | null, unit: string): string
   return `${value} ${unit}`;
 }
 
+// Подсчёт процента заполненности
+export function getFilledPercentage(indicators: Partial<HealthIndicators> | null): number {
+  if (!indicators) return 0;
+  
+  let filled = 0;
+  INDICATORS_CONFIG.forEach(config => {
+    const value = indicators[config.key];
+    if (value !== null && value !== undefined && value !== '') {
+      filled++;
+    }
+  });
+  
+  return Math.round((filled / INDICATORS_CONFIG.length) * 100);
+}
+
+// Проверка нужно ли показывать кнопку "Внести анализы"
+export function shouldShowIndicatorsButton(indicators: HealthIndicators | null): boolean {
+  if (!indicators) return true;
+  
+  // Проверяем заполненность
+  const filledCount = INDICATORS_CONFIG.filter(config => {
+    const value = indicators[config.key];
+    return value !== null && value !== undefined;
+  }).length;
+  
+  // Если не все заполнены - показываем
+  if (filledCount < INDICATORS_CONFIG.length) return true;
+  
+  // Если все заполнены - проверяем прошло ли 2 недели
+  const updatedAt = new Date(indicators.updated_at || indicators.created_at);
+  const twoWeeksAgo = new Date();
+  twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+  
+  return updatedAt < twoWeeksAgo;
+}
+
+// Получить ключевые показатели для отображения в Обзоре
+export function getKeyIndicatorsFromData(indicators: HealthIndicators | null): {
+  icon: string;
+  name: string;
+  value: string;
+  status: string;
+  statusType: 'success' | 'warning' | 'danger' | 'none';
+}[] {
+  const keyFields: (keyof HealthIndicators)[] = ['vitamin_d', 'ferritin', 'iron', 'hemoglobin', 'b12'];
+  const icons: Record<string, string> = {
+    vitamin_d: '☀️',
+    ferritin: '💪',
+    iron: '🧲',
+    hemoglobin: '🩸',
+    b12: '💊',
+  };
+  
+  return keyFields.map(field => {
+    const config = INDICATORS_CONFIG.find(c => c.key === field);
+    if (!config) return null;
+    
+    const value = indicators?.[field] as number | null;
+    const status = getIndicatorStatus(value, config);
+    
+    let statusText = '—';
+    if (status === 'optimal') statusText = 'Норма';
+    else if (status === 'warning') statusText = 'Внимание';
+    else if (status === 'danger') statusText = 'Низкий';
+    
+    return {
+      icon: icons[field] || '📊',
+      name: config.name,
+      value: formatIndicatorValue(value, config.unit),
+      status: statusText,
+      statusType: status === 'none' ? 'none' : status,
+    };
+  }).filter(Boolean) as any[];
+}
+

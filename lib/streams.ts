@@ -89,7 +89,7 @@ export async function getNextStream(): Promise<Stream | null> {
 
 // Отправить вопрос к эфиру
 export async function sendStreamQuestion(
-  streamId: string,
+  streamId: string | null,
   question: string
 ): Promise<{ success: boolean; error?: string }> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -98,13 +98,24 @@ export async function sendStreamQuestion(
     return { success: false, error: 'Пользователь не авторизован' };
   }
 
+  // Формируем данные для вставки
+  const insertData: {
+    user_id: string;
+    question: string;
+    stream_id?: string;
+  } = {
+    user_id: user.id,
+    question,
+  };
+
+  // Добавляем stream_id только если он передан (реальный UUID из таблицы streams)
+  if (streamId) {
+    insertData.stream_id = streamId;
+  }
+
   const { error } = await supabase
     .from('stream_questions')
-    .insert({
-      stream_id: streamId,
-      user_id: user.id,
-      question,
-    });
+    .insert(insertData);
 
   if (error) {
     console.error('Error sending question:', error);
