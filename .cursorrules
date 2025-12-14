@@ -1,0 +1,29 @@
+# Health Club App — ТЗ
+
+## Стек
+- React Native + Expo + TypeScript
+- NativeWind (Tailwind)
+- Expo Router
+- Supabase
+- Zustand
+- Lucide React Native (иконки)
+- Expo Linear Gradient
+
+## 5 экранов (табы)
+1. Главный — 4 кнопки, статистика, чат
+2. Дневник — самочувствие, вода, сон, стресс, БАДы
+3. Здоровье — анализы, план, health score
+4. Эфиры — календарь, видео врачей, вопросы
+5. Тарелки — фото еды, разборы питания
+
+## Дизайн
+- Градиенты: teal-cyan, violet-purple, green-teal
+- Карточки: rounded-2xl, shadow-sm, border-gray-100
+- Текст на русском языке
+
+## Код
+- View вместо div
+- Text вместо span
+- TouchableOpacity вместо button
+- className для стилей NativeWind
+
