@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ProfileAvatar from '@/components/ProfileAvatar';
+import { sendStreamQuestion } from '@/lib/streams';
 
 const { width } = Dimensions.get('window');
 
@@ -234,8 +235,18 @@ export default function StreamsScreen() {
     }
   };
 
-  const handleSendQuestion = () => {
+  const handleSendQuestion = async () => {
     if (question.trim()) {
+      // Сохраняем вопрос в Supabase
+      const streamId = nextBroadcast?.broadcast?.id?.toString() || 'general';
+      const result = await sendStreamQuestion(streamId, question.trim());
+      
+      if (!result.success) {
+        console.error('Failed to send question:', result.error);
+        alert('Ошибка: ' + result.error);
+        return;
+      }
+
       setQuestionSent(true);
       setTimeout(() => {
         setShowQuestionModal(false);
