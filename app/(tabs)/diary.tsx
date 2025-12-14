@@ -547,9 +547,6 @@ export default function DiaryScreen() {
         <View style={styles.diarySection}>
           <View style={styles.diarySectionHeader}>
             <Text style={styles.diarySectionTitle}>📔 Мой дневник</Text>
-            <TouchableOpacity onPress={() => router.push('/diary-history')}>
-              <Text style={styles.seeAllLink}>Все записи →</Text>
-            </TouchableOpacity>
           </View>
 
           {/* Динамика за месяц */}
@@ -584,10 +581,9 @@ export default function DiaryScreen() {
             </View>
           )}
 
-          {/* Последние записи */}
-          <Text style={styles.historyTitle}>📅 Последние записи</Text>
+          {/* Записи */}
           {diaryHistory.length > 0 ? (
-            diaryHistory.slice(0, 5).map((entry, index) => {
+            diaryHistory.slice(0, 3).map((entry, index) => {
               const entryDate = new Date(entry.date);
               const isToday = entry.date === new Date().toISOString().split('T')[0];
               const moodEmoji = entry.mood ? ['😫', '😕', '😐', '🙂', '😊'][entry.mood - 1] : '—';
@@ -633,6 +629,16 @@ export default function DiaryScreen() {
               <Text style={styles.emptyHistoryText}>Пока нет записей</Text>
               <Text style={styles.emptyHistoryHint}>Заполните дневник и нажмите "Сохранить"</Text>
             </View>
+          )}
+          
+          {/* Кнопка "Все записи" внизу */}
+          {diaryHistory.length > 0 && (
+            <TouchableOpacity 
+              style={styles.allEntriesButton}
+              onPress={() => router.push('/diary-history')}
+            >
+              <Text style={styles.allEntriesText}>Все записи</Text>
+            </TouchableOpacity>
           )}
         </View>
 
@@ -1439,5 +1445,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9ca3af',
     marginTop: 4,
+  },
+  allEntriesButton: {
+    marginTop: 16,
+    paddingVertical: 14,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  allEntriesText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#6b7280',
   },
 });

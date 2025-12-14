@@ -76,14 +76,6 @@ export default function HomeScreen() {
             </Text>
           </View>
           <View style={styles.headerRight}>
-            <View style={styles.streakBadge}>
-              <Text style={styles.streakEmoji}>🔥</Text>
-              {loading ? (
-                <ActivityIndicator size="small" color="#f97316" />
-              ) : (
-                <Text style={styles.streakNumber}>{stats.streak}</Text>
-              )}
-            </View>
             <ProfileAvatar size={44} />
           </View>
         </View>

@@ -273,29 +273,38 @@ export default function ProfileScreen() {
           </View>
         </LinearGradient>
 
-        {/* Баннер заполнения профиля */}
-        {isProfileIncomplete && !isEditing && (
-          <TouchableOpacity 
-            style={styles.profileBanner}
-            onPress={() => setIsEditing(true)}
-            activeOpacity={0.9}
-          >
-            <LinearGradient
-              colors={['#f59e0b', '#f97316']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.profileBannerGradient}
+        {/* Баннер заполнения профиля или кнопка редактирования */}
+        {!isEditing && (
+          isProfileIncomplete ? (
+            <TouchableOpacity 
+              style={styles.profileBanner}
+              onPress={() => setIsEditing(true)}
+              activeOpacity={0.9}
             >
-              <RNText style={styles.profileBannerEmoji}>👋</RNText>
-              <RNView style={styles.profileBannerContent}>
-                <RNText style={styles.profileBannerTitle}>Заполните профиль</RNText>
-                <RNText style={styles.profileBannerText}>Для персональных рекомендаций</RNText>
-              </RNView>
-              <RNView style={styles.profileBannerButton}>
-                <RNText style={styles.profileBannerButtonText}>Заполнить</RNText>
-              </RNView>
-            </LinearGradient>
-          </TouchableOpacity>
+              <LinearGradient
+                colors={['#f59e0b', '#f97316']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.profileBannerGradient}
+              >
+                <RNText style={styles.profileBannerEmoji}>👋</RNText>
+                <RNView style={styles.profileBannerContent}>
+                  <RNText style={styles.profileBannerTitle}>Заполните профиль</RNText>
+                  <RNText style={styles.profileBannerText}>Для персональных рекомендаций</RNText>
+                </RNView>
+                <RNView style={styles.profileBannerButton}>
+                  <RNText style={styles.profileBannerButtonText}>Заполнить</RNText>
+                </RNView>
+              </LinearGradient>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity 
+              style={styles.editProfileButton}
+              onPress={() => setIsEditing(true)}
+            >
+              <Text style={styles.editProfileButtonText}>✏️ Внести изменения</Text>
+            </TouchableOpacity>
+          )
         )}
 
         {/* Личные данные */}
@@ -398,7 +407,7 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* План на 14 дней */}
+        {/* Быстрый старт на платформе */}
         <View style={styles.planCard}>
           <LinearGradient
             colors={['#8b5cf6', '#a855f7']}
@@ -408,9 +417,11 @@ export default function ProfileScreen() {
           >
             <View style={styles.planHeaderContent}>
               <View style={styles.planHeaderLeft}>
-                <Text style={styles.planTitle}>🎯 План на 14 дней</Text>
+                <Text style={styles.planTitle}>🚀 Быстрый старт</Text>
                 <Text style={styles.planSubtitle}>
-                  Выполнено {completedTasks} из {planTasks.length}
+                  {completedTasks === planTasks.length 
+                    ? '🎁 Подарок разблокирован!' 
+                    : `${completedTasks}/${planTasks.length} шагов выполнено`}
                 </Text>
               </View>
               <View style={styles.planProgress}>
@@ -1075,5 +1086,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#f59e0b',
+  },
+  editProfileButton: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  editProfileButtonText: {
+    fontSize: 14,
+    color: '#9ca3af',
   },
 });
